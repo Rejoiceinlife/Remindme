@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="theme-color" content="#6c63ff"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="RemindMe"/>
+<title>RemindMe</title>
+<link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="icon-192.png"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0c0c14;
+    --surface: #13131e;
+    --surface2: #1a1a28;
+    --border: #22223a;
+    --accent: #6c63ff;
+    --accent-glow: rgba(108,99,255,0.4);
+    --pink: #ff6b9d;
+    --teal: #00d4aa;
+    --text: #eeeaf8;
+    --muted: #6b6885;
+    --low: #4ade80;
+    --medium: #fbbf24;
+    --high: #f87171;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%; overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    overscroll-behavior: none;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse 70% 50% at 15% 15%, rgba(108,99,255,0.13) 0%, transparent 65%),
+      radial-gradient(ellipse 50% 50% at 85% 85%, rgba(255,107,157,0.08) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  /* ── LAYOUT ── */
+  #app {
+    position: relative; z-index: 1;
+    height: 100vh;
+    display: flex; flex-direction: column;
+    padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bottom);
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  /* ── HEADER ── */
+  .hdr {
+    padding: 20px 22px 0;
+    display: flex; justify-content: space-between; align-items: center;
+    flex-shrink: 0;
+  }
+  .logo { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 800; letter-spacing: -1px; }
+  .logo em { color: var(--pink); font-style: normal; }
+  .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .btn-new {
+    background: var(--accent); border: none; border-radius: 14px;
+    padding: 10px 18px; color: #fff; font-weight: 700; font-size: 14px;
+    cursor: pointer; display: flex; align-items: center; gap: 5px;
+    box-shadow: 0 4px 20px var(--accent-glow);
+    transition: transform .15s, box-shadow .15s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .btn-new:active { transform: scale(0.95); }
+
+  /* ── STATS ── */
+  .stats { display: flex; gap: 8px; padding: 14px 22px 0; flex-shrink: 0; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 8px 14px; font-size: 12px; font-weight: 600; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+  .stat b { color: var(--text); font-size: 15px; font-weight: 700; }
+
+  /* ── SEARCH ── */
+  .srch { padding: 12px 22px 0; position: relative; flex-shrink: 0; }
+  .srch input {
+    width: 100%; background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 14px; padding: 11px 14px 11px 40px;
+    color: var(--text); font-size: 14px; font-family: 'DM Sans', sans-serif;
+    outline: none; transition: border .2s;
+  }
+  .srch input:focus { border-color: var(--accent); }
+  .srch-ico { position: absolute; left: 36px; top: 50%; transform: translateY(-50%); font-size: 15px; color: var(--muted); pointer-events: none; }
+
+  /* ── FILTERS ── */
+  .filters { display: flex; gap: 7px; padding: 12px 22px 0; overflow-x: auto; scrollbar-width: none; flex-shrink: 0; }
+  .filters::-webkit-scrollbar { display: none; }
+  .fbtn {
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 20px; padding: 5px 14px; font-size: 11px; font-weight: 700;
+    color: var(--muted); cursor: pointer; white-space: nowrap;
+    transition: all .2s; font-family: 'DM Sans', sans-serif;
+  }
+  .fbtn.on { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 2px 12px var(--accent-glow); }
+
+  /* ── SCROLL LIST ── */
+  .scroll { flex: 1; overflow-y: auto; padding: 12px 22px 20px; scrollbar-width: thin; scrollbar-color: #333 transparent; }
+  .scroll::-webkit-scrollbar { width: 3px; }
+  .scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+  .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-ico { font-size: 48px; margin-bottom: 12px; }
+  .empty p { font-size: 15px; font-weight: 600; color: #2e2d44; }
+  .empty small { font-size: 12px; display: block; margin-top: 4px; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 18px; padding: 14px 16px;
+    cursor: pointer; position: relative; overflow: hidden;
+    transition: transform .2s, box-shadow .2s;
+    margin-bottom: 9px;
+    animation: fadeUp .3s ease both;
+  }
+  .card:active { transform: scale(0.98); }
+  .card.done { opacity: 0.4; }
+  .stripe { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+  .inner { display: flex; gap: 12px; padding-left: 8px; }
+  .chk {
+    width: 21px; height: 21px; border-radius: 6px;
+    border: 2px solid var(--border); background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+    transition: all .2s;
+  }
+  .chk.on { background: var(--accent); border-color: var(--accent); }
+  .chk svg { width: 11px; height: 11px; stroke: #fff; stroke-width: 2.5; fill: none; }
+  .cbody { flex: 1; min-width: 0; }
+  .ctitle { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card.done .ctitle { text-decoration: line-through; color: var(--muted); }
+  .cnote { font-size: 12px; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chips { display: flex; gap: 5px; margin-top: 7px; flex-wrap: wrap; }
+  .chip { border-radius: 20px; padding: 2px 9px; font-size: 10px; font-weight: 700; }
+  .chip-tag  { background: var(--surface2); color: var(--muted); }
+  .chip-date { background: rgba(0,212,170,.12); color: #00c9a3; }
+  .chip-alm  { background: rgba(108,99,255,.15); color: #a89cff; }
+
+  /* ── BOTTOM SHEET (shared) ── */
+  .sheet-bg {
+    display: none; position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,.7); backdrop-filter: blur(10px);
+  }
+  .sheet-bg.on { display: flex; align-items: flex-end; justify-content: center; }
+  .sheet {
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 26px 26px 0 0;
+    width: 100%; max-width: 480px; max-height: 92vh;
+    overflow-y: auto; padding: 20px 22px calc(20px + var(--safe-bottom));
+    animation: slideUp .32s cubic-bezier(.34,1.56,.64,1);
+    scrollbar-width: none;
+  }
+  .sheet::-webkit-scrollbar { display: none; }
+  .drag { width: 38px; height: 4px; background: var(--border); border-radius: 4px; margin: 0 auto 20px; }
+  .sheet-title { font-family: 'Syne', sans-serif; font-size: 21px; font-weight: 800; margin-bottom: 20px; }
+
+  /* ── FORM ── */
+  .fg { margin-bottom: 14px; }
+  .fg label { display: block; font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 6px; }
+  .fg input, .fg textarea, .fg select {
+    width: 100%; background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: 12px; padding: 10px 13px;
+    color: var(--text); font-size: 14px; font-family: 'DM Sans', sans-serif;
+    outline: none; transition: border .2s; resize: none;
+  }
+  .fg input:focus, .fg textarea:focus, .fg select:focus { border-color: var(--accent); }
+  .fg select option { background: var(--surface2); }
+
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; margin-bottom: 14px; }
+  .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; }
+
+  .pbtn {
+    padding: 8px 4px; border-radius: 10px; border: 1.5px solid var(--border);
+    background: var(--surface2); font-size: 11px; font-weight: 700;
+    color: var(--muted); cursor: pointer; transition: all .2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  /* ── ALARM BOX ── */
+  .almbox { background: rgba(108,99,255,.07); border: 1.5px solid rgba(108,99,255,.2); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
+  .almtitle { font-size: 13px; font-weight: 700; color: #a89cff; margin-bottom: 12px; }
+  .almprev { font-size: 12px; color: var(--accent); font-weight: 600; margin-top: 8px; }
+
+  /* ── BUTTONS ── */
+  .btn-save {
+    width: 100%; background: var(--accent); border: none; border-radius: 13px;
+    padding: 14px; color: #fff; font-weight: 700; font-size: 14px;
+    cursor: pointer; box-shadow: 0 4px 20px var(--accent-glow);
+    transition: transform .15s, box-shadow .15s;
+    font-family: 'DM Sans', sans-serif; margin-top: 4px;
+  }
+  .btn-save:active { transform: scale(0.97); }
+  .btn-save:disabled { background: var(--surface2); color: var(--muted); box-shadow: none; cursor: not-allowed; }
+  .btn-cancel {
+    width: 100%; background: none; border: none; color: var(--muted);
+    font-size: 14px; padding: 13px; cursor: pointer; font-family: 'DM Sans', sans-serif;
+  }
+
+  /* ── DETAIL ── */
+  .dethdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .btn-back { background: var(--surface2); border: 1.5px solid var(--border); border-radius: 10px; padding: 7px 13px; color: var(--muted); font-size: 13px; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+  .btn-del  { background: rgba(248,113,113,.1); border: 1.5px solid rgba(248,113,113,.3); border-radius: 10px; padding: 7px 13px; color: #f87171; font-size: 13px; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+  .det-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; margin: 10px 0 12px; line-height: 1.2; }
+  .det-note { font-size: 14px; color: #9993b8; line-height: 1.7; margin-bottom: 16px; }
+  .det-meta { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+  .det-row { display: flex; align-items: center; gap: 9px; font-size: 13px; }
+  .btn-tog {
+    width: 100%; padding: 13px; border-radius: 13px;
+    font-weight: 700; font-size: 14px; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; transition: all .2s;
+  }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; top: calc(18px + var(--safe-top)); right: 18px; z-index: 999;
+    border-radius: 12px; padding: 11px 16px;
+    font-size: 13px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.5);
+    animation: toastIn .25s ease;
+    transition: opacity .3s;
+    pointer-events: none;
+  }
+  .toast.green { background: #0d2a1a; border: 1px solid #4ade80; color: #4ade80; }
+  .toast.red   { background: #2a0d0d; border: 1px solid #f87171; color: #f87171; }
+  .toast.blue  { background: #0d1228; border: 1px solid #a89cff; color: #a89cff; }
+  .toast.hide  { opacity: 0; }
+
+  /* ── INSTALL BANNER ── */
+  #installBanner {
+    display: none; position: fixed; bottom: calc(16px + var(--safe-bottom));
+    left: 50%; transform: translateX(-50%);
+    background: var(--surface); border: 1.5px solid var(--accent);
+    border-radius: 18px; padding: 14px 20px;
+    box-shadow: 0 8px 40px rgba(108,99,255,.35);
+    z-index: 200; width: calc(100% - 44px); max-width: 440px;
+    animation: fadeUp .4s ease;
+  }
+  #installBanner.show { display: flex; align-items: center; gap: 12px; }
+  .install-ico { font-size: 28px; flex-shrink: 0; }
+  .install-txt { flex: 1; }
+  .install-txt strong { display: block; font-size: 14px; color: var(--text); }
+  .install-txt small { font-size: 12px; color: var(--muted); }
+  .btn-install {
+    background: var(--accent); border: none; border-radius: 10px;
+    padding: 8px 14px; color: #fff; font-weight: 700; font-size: 13px;
+    cursor: pointer; font-family: 'DM Sans', sans-serif; flex-shrink: 0;
+  }
+  .btn-close-banner { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; flex-shrink: 0; line-height: 1; }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp   { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes slideUp  { from { transform:translateY(100%); } to { transform:translateY(0); } }
+  @keyframes toastIn  { from { opacity:0; transform:scale(0.9); } to { opacity:1; transform:scale(1); } }
+  @keyframes ring     { 0%,100%{transform:rotate(-15deg)} 25%{transform:rotate(15deg)} 50%{transform:rotate(-10deg)} 75%{transform:rotate(10deg)} }
+
+  input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(.4); cursor: pointer; }
+  input[type="number"] { -moz-appearance: textfield; }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Header -->
+  <div class="hdr">
+    <div>
+      <div class="logo">Remind<em>Me</em></div>
+      <div class="sub" id="subLabel">Loading…</div>
+    </div>
+    <button class="btn-new" onclick="openAdd()">
+      <svg width="14" height="14" viewBox="0 0 14 14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
+      New
+    </button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat"><b id="sTotal">0</b> Total</div>
+    <div class="stat"><b id="sPending">0</b> Pending</div>
+    <div class="stat"><b id="sDone">0</b> Done</div>
+  </div>
+
+  <!-- Search -->
+  <div class="srch">
+    <span class="srch-ico">🔍</span>
+    <input id="qInput" type="text" placeholder="Search reminders…" oninput="renderList()"/>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters" id="filterBar"></div>
+
+  <!-- List -->
+  <div class="scroll" id="listWrap"></div>
+</div>
+
+<!-- ── ADD SHEET ── -->
+<div class="sheet-bg" id="addBg" onclick="bgClose(event,'addBg')">
+  <div class="sheet">
+    <div class="drag"></div>
+    <div class="sheet-title">✏️ New Reminder</div>
+
+    <div class="fg">
+      <label>Title *</label>
+      <input id="fTitle" type="text" placeholder="What to remember?" oninput="updSave()"/>
+    </div>
+    <div class="fg">
+      <label>Note</label>
+      <textarea id="fNote" rows="3" placeholder="More details…"></textarea>
+    </div>
+    <div class="g2">
+      <div class="fg" style="margin:0">
+        <label>Tag</label>
+        <select id="fTag">
+          <option>Personal</option><option>Work</option><option>Health</option>
+          <option>Shopping</option><option>Finance</option><option>Other</option>
+        </select>
+      </div>
+      <div class="fg" style="margin:0">
+        <label>Due Date</label>
+        <input id="fDate" type="date"/>
+      </div>
+    </div>
+    <div class="fg">
+      <label>Priority</label>
+      <div class="g3" id="priBtns">
+        <button class="pbtn" id="pLow"    onclick="setPri('low')">🟢 Low</button>
+        <button class="pbtn" id="pMedium" onclick="setPri('medium')">🟡 Med</button>
+        <button class="pbtn" id="pHigh"   onclick="setPri('high')">🔴 High</button>
+      </div>
+    </div>
+
+    <!-- Alarm -->
+    <div class="almbox">
+      <div class="almtitle">🔔 Set Alarm <span style="color:var(--muted);font-weight:400;font-size:11px">(optional)</span></div>
+      <div class="g2">
+        <div class="fg" style="margin:0"><label>Hour (0–23)</label><input id="fH" type="number" min="0" max="23" placeholder="9" oninput="updAlm()"/></div>
+        <div class="fg" style="margin:0"><label>Minute (0–59)</label><input id="fM" type="number" min="0" max="59" placeholder="30" oninput="updAlm()"/></div>
+      </div>
+      <div class="fg" style="margin-top:10px;margin-bottom:0">
+        <label>Alarm Label</label>
+        <input id="fAL" type="text" placeholder="e.g. Take medicine"/>
+      </div>
+      <div id="almPrev" class="almprev" style="display:none"></div>
+    </div>
+
+    <button class="btn-save" id="btnSave" onclick="saveR()" disabled>Save Reminder</button>
+    <button class="btn-cancel" onclick="closeAdd()">Cancel</button>
+  </div>
+</div>
+
+<!-- ── DETAIL SHEET ── -->
+<div class="sheet-bg" id="detBg" onclick="bgClose(event,'detBg')">
+  <div class="sheet">
+    <div class="drag"></div>
+    <div class="dethdr">
+      <button class="btn-back" onclick="closeDet()">← Back</button>
+      <button class="btn-del"  onclick="delSel()">🗑 Delete</button>
+    </div>
+    <div id="detContent"></div>
+  </div>
+</div>
+
+<!-- Install Banner -->
+<div id="installBanner">
+  <div class="install-ico">📲</div>
+  <div class="install-txt">
+    <strong>Install RemindMe</strong>
+    <small>Add to home screen — works offline!</small>
+  </div>
+  <button class="btn-install" onclick="installApp()">Install</button>
+  <button class="btn-close-banner" onclick="dismissBanner()">×</button>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────────
+let reminders = [];
+let filter = 'all';
+let selId = null;
+let pri = 'medium';
+let deferredPrompt = null;
+
+const PCOL = { low:'#4ade80', medium:'#fbbf24', high:'#f87171' };
+const FILTERS = ['all','pending','done','Personal','Work','Health','Shopping','Finance','Other'];
+
+// ── PERSISTENCE ────────────────────────────────────────────────────────
+function load() {
+  try { reminders = JSON.parse(localStorage.getItem('rmv3') || '[]'); } catch { reminders=[]; }
+}
+function save() {
+  try { localStorage.setItem('rmv3', JSON.stringify(reminders)); } catch {}
+}
+
+// ── RENDER ─────────────────────────────────────────────────────────────
+function render() { renderStats(); renderFilters(); renderList(); }
+
+function renderStats() {
+  const t = reminders.length, d = reminders.filter(r=>r.done).length, p = t-d;
+  document.getElementById('sTotal').textContent   = t;
+  document.getElementById('sDone').textContent    = d;
+  document.getElementById('sPending').textContent = p;
+  document.getElementById('subLabel').textContent = p===0 ? 'All caught up! ✨' : `${p} pending reminder${p>1?'s':''}`;
+}
+
+function renderFilters() {
+  document.getElementById('filterBar').innerHTML = FILTERS.map(f=>`
+    <button class="fbtn ${filter===f?'on':''}" onclick="setF('${f}')">${f[0].toUpperCase()+f.slice(1)}</button>
+  `).join('');
+}
+function setF(f) { filter=f; render(); }
+
+function renderList() {
+  const q = document.getElementById('qInput').value.toLowerCase();
+  let list = reminders.filter(r=>{
+    if (filter==='done')    return r.done;
+    if (filter==='pending') return !r.done;
+    if (!['all','done','pending'].includes(filter)) return r.tag===filter;
+    return true;
+  }).filter(r=> r.title.toLowerCase().includes(q)||(r.note||'').toLowerCase().includes(q));
+
+  const w = document.getElementById('listWrap');
+  if (!list.length) {
+    w.innerHTML=`<div class="empty"><div class="empty-ico">📋</div><p>Nothing here yet</p><small>Tap + New to add a reminder</small></div>`;
+    return;
+  }
+  w.innerHTML = list.map((r,i)=>{
+    const chips=[];
+    if(r.tag)  chips.push(`<span class="chip chip-tag">${x(r.tag)}</span>`);
+    if(r.date) chips.push(`<span class="chip chip-date">📅 ${fd(r.date)}</span>`);
+    if(r.ah!==''&&r.am!=='') chips.push(`<span class="chip chip-alm">🔔 ${ft(+r.ah,+r.am)}</span>`);
+    return `<div class="card${r.done?' done':''}" onclick="openDet(${r.id})" style="animation-delay:${i*.04}s">
+      <div class="stripe" style="background:${PCOL[r.pri]||PCOL.medium}"></div>
+      <div class="inner">
+        <div class="chk${r.done?' on':''}" onclick="event.stopPropagation();tog(${r.id})">
+          ${r.done?`<svg viewBox="0 0 11 9"><polyline points="1,4.5 4,8 10,1"/></svg>`:''}
+        </div>
+        <div class="cbody">
+          <div class="ctitle">${x(r.title)}</div>
+          ${r.note?`<div class="cnote">${x(r.note)}</div>`:''}
+          <div class="chips">${chips.join('')}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── ADD SHEET ──────────────────────────────────────────────────────────
+function openAdd() {
+  ['fTitle','fNote','fDate','fH','fM','fAL'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fTag').value='Personal';
+  document.getElementById('almPrev').style.display='none';
+  setPri('medium'); updSave();
+  document.getElementById('addBg').classList.add('on');
+  setTimeout(()=>document.getElementById('fTitle').focus(),300);
+}
+function closeAdd() { document.getElementById('addBg').classList.remove('on'); }
+
+function setPri(p) {
+  pri=p;
+  ['low','medium','high'].forEach(k=>{
+    const b=document.getElementById('p'+k[0].toUpperCase()+k.slice(1));
+    b.style.borderColor = k===p?PCOL[k]:'var(--border)';
+    b.style.color       = k===p?PCOL[k]:'var(--muted)';
+    b.style.background  = k===p?PCOL[k]+'22':'var(--surface2)';
+  });
+}
+
+function updSave() {
+  const t=document.getElementById('fTitle').value.trim();
+  const h=document.getElementById('fH').value, m=document.getElementById('fM').value;
+  const btn=document.getElementById('btnSave');
+  btn.disabled=!t;
+  btn.textContent=(h!==''&&m!=='')?'Save & Set Alarm 🔔':'Save Reminder';
+}
+function updAlm() {
+  updSave();
+  const h=document.getElementById('fH').value, m=document.getElementById('fM').value;
+  const p=document.getElementById('almPrev');
+  if(h!==''&&m!==''){ p.style.display='block'; p.textContent=`⏰ Will ring at ${ft(+h,+m)}`; }
+  else p.style.display='none';
+}
+
+function saveR() {
+  const title=document.getElementById('fTitle').value.trim();
+  if(!title) return;
+  const h=document.getElementById('fH').value, m=document.getElementById('fM').value;
+  const al=document.getElementById('fAL').value.trim()||title;
+  const r={
+    id: Date.now(), title,
+    note:  document.getElementById('fNote').value.trim(),
+    tag:   document.getElementById('fTag').value,
+    date:  document.getElementById('fDate').value,
+    pri, ah:h, am:m, al,
+    done:false, at: new Date().toISOString()
+  };
+  reminders.unshift(r); save(); render(); closeAdd();
+  if(h!==''&&m!=='') schedAlarm(+h,+m,al);
+  toast('✓ Reminder saved!','green');
+}
+
+// ── DETAIL ────────────────────────────────────────────────────────────
+function openDet(id) { selId=id; renderDet(); document.getElementById('detBg').classList.add('on'); }
+function closeDet()  { document.getElementById('detBg').classList.remove('on'); }
+
+function renderDet() {
+  const r=reminders.find(x=>x.id===selId); if(!r) return;
+  const meta=[];
+  if(r.date) meta.push(`<div class="det-row"><span>📅</span><span style="color:#00c9a3">${fd(r.date)}</span></div>`);
+  if(r.ah!==''&&r.am!=='') meta.push(`<div class="det-row"><span>🔔</span><span style="color:#a89cff">Alarm at ${ft(+r.ah,+r.am)}${r.al?' — '+x(r.al):''}</span></div>`);
+  meta.push(`<div class="det-row"><span>🏷</span><span style="color:var(--muted)">${r.tag}</span></div>`);
+  meta.push(`<div class="det-row"><span>🕐</span><span style="color:var(--muted)">${new Date(r.at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span></div>`);
+  document.getElementById('detContent').innerHTML=`
+    <div style="font-size:11px;font-weight:700;color:${PCOL[r.pri]};text-transform:uppercase;letter-spacing:.6px;display:flex;align-items:center;gap:7px">
+      <span style="width:8px;height:8px;border-radius:50%;background:${PCOL[r.pri]};display:inline-block"></span>${r.pri} priority
+    </div>
+    <div class="det-title" style="${r.done?'text-decoration:line-through;color:var(--muted)':''}">${x(r.title)}</div>
+    ${r.note?`<div class="det-note">${x(r.note)}</div>`:''}
+    <div class="det-meta">${meta.join('')}</div>
+    <button class="btn-tog" onclick="tog(${r.id});renderDet()" style="
+      background:${r.done?'var(--surface2)':'var(--accent)'};
+      border:${r.done?'1.5px solid var(--border)':'none'};
+      color:${r.done?'var(--muted)':'#fff'};
+      box-shadow:${r.done?'none':'0 4px 18px var(--accent-glow)'};
+    ">${r.done?'↩ Mark as Pending':'✓ Mark as Done'}</button>
+  `;
+}
+
+function delSel() {
+  if(!confirm('Delete this reminder?')) return;
+  reminders=reminders.filter(r=>r.id!==selId);
+  save(); render(); closeDet();
+  toast('🗑 Deleted','red');
+}
+function tog(id) {
+  const r=reminders.find(x=>x.id===id); if(r){ r.done=!r.done; save(); render(); }
+}
+
+// ── ALARM ─────────────────────────────────────────────────────────────
+function schedAlarm(h,m,label) {
+  const now=new Date(), t=new Date();
+  t.setHours(h,m,0,0);
+  if(t<=now) t.setDate(t.getDate()+1);
+  const ms=t-now;
+  toast(`🔔 Alarm set for ${ft(h,m)}`,'blue');
+  setTimeout(()=>{ fireAlarm(label,ft(h,m)); beep(); }, ms);
+}
+
+function fireAlarm(label,timeStr) {
+  const el=document.createElement('div');
+  el.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;';
+  el.innerHTML=`
+    <div style="background:#13131e;border:2px solid #6c63ff;border-radius:24px;padding:38px 32px;text-align:center;max-width:300px;width:88%;box-shadow:0 0 60px rgba(108,99,255,.45)">
+      <div style="font-size:50px;animation:ring .5s infinite alternate">🔔</div>
+      <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#fff;margin:12px 0 4px">Alarm!</div>
+      <div style="font-size:30px;font-weight:700;color:#6c63ff;margin-bottom:6px">${timeStr}</div>
+      <div style="font-size:14px;color:#9993b8;margin-bottom:22px">${x(label)}</div>
+      <button onclick="this.closest('div[style*=fixed]').remove()" style="background:#6c63ff;border:none;border-radius:12px;padding:12px 30px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;width:100%">Dismiss</button>
+    </div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click',e=>{ if(e.target===el) el.remove(); });
+  // Vibrate if supported
+  try { navigator.vibrate && navigator.vibrate([500,200,500,200,500]); } catch{}
+}
+
+function beep() {
+  try {
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    [0,.3,.6,.9,1.2].forEach(t=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.frequency.setValueAtTime(880,ctx.currentTime+t);
+      o.frequency.setValueAtTime(660,ctx.currentTime+t+.15);
+      g.gain.setValueAtTime(.3,ctx.currentTime+t);
+      g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+t+.28);
+      o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+.3);
+    });
+  } catch{}
+}
+
+// ── INSTALL PWA ────────────────────────────────────────────────────────
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault(); deferredPrompt=e;
+  if(!localStorage.getItem('installDismissed')) {
+    document.getElementById('installBanner').classList.add('show');
+  }
+});
+function installApp() {
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(()=>{ deferredPrompt=null; dismissBanner(); });
+}
+function dismissBanner() {
+  document.getElementById('installBanner').classList.remove('show');
+  localStorage.setItem('installDismissed','1');
+}
+window.addEventListener('appinstalled',()=>{ dismissBanner(); toast('🎉 App installed!','green'); });
+
+// ── SERVICE WORKER ─────────────────────────────────────────────────────
+if('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+
+// ── UTILS ──────────────────────────────────────────────────────────────
+function bgClose(e,id) { if(e.target.id===id) document.getElementById(id).classList.remove('on'); }
+function ft(h,m) { const ap=h>=12?'PM':'AM',hr=h%12===0?12:h%12; return `${hr}:${String(m).padStart(2,'0')} ${ap}`; }
+function fd(s) { if(!s) return ''; const d=new Date(s+'T00:00:00'); return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+function x(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+let tTimer;
+function toast(msg,type='green') {
+  document.querySelectorAll('.toast').forEach(t=>t.remove());
+  const el=document.createElement('div');
+  el.className=`toast ${type}`; el.textContent=msg;
+  document.body.appendChild(el);
+  clearTimeout(tTimer);
+  tTimer=setTimeout(()=>{ el.classList.add('hide'); setTimeout(()=>el.remove(),300); },3000);
+}
+
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeAdd(); closeDet(); } });
+
+// ── INIT ───────────────────────────────────────────────────────────────
+load(); render();
+</script>
+</body>
+</html>
